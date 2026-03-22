@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 
 const cardStyle = {
   maxWidth: '560px',
@@ -23,6 +23,9 @@ function App() {
   })
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [admissions, setAdmissions] = useState([])
+  const [admissionsLoading, setAdmissionsLoading] = useState(false)
+  const [admissionsError, setAdmissionsError] = useState('')
 
   const handleChange = (key, value) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
@@ -32,7 +35,6 @@ function App() {
     e.preventDefault()
     setLoading(true)
     setMessage('')
-
     try {
       const response = await fetch(`${apiUrl}/api/admissions`, {
         method: 'POST',
@@ -41,12 +43,11 @@ function App() {
         },
         body: JSON.stringify(formData),
       })
-
       const result = await response.json()
-
       if (response.ok) {
         setMessage('✅ ' + result.message)
         setFormData({ fullName: '', email: '', course: '' })
+        fetchAdmissions() // Gửi xong thì fetch lại danh sách
       } else {
         setMessage('❌ ' + (result.message || 'Có lỗi xảy ra.'))
       }
@@ -56,6 +57,28 @@ function App() {
       setLoading(false)
     }
   }
+
+  const fetchAdmissions = async () => {
+    setAdmissionsLoading(true)
+    setAdmissionsError('')
+    try {
+      const res = await fetch(`${apiUrl}/api/admissions`)
+      const data = await res.json()
+      if (res.ok) {
+        setAdmissions(data.data || [])
+      } else {
+        setAdmissionsError(data.message || 'Lỗi tải danh sách')
+      }
+    } catch (e) {
+      setAdmissionsError('Lỗi kết nối tới server')
+    } finally {
+      setAdmissionsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchAdmissions()
+  }, [apiUrl])
 
   return (
     <div style={cardStyle}>
@@ -130,6 +153,40 @@ function App() {
         }}
       >
         API URL hiện tại: <strong>{apiUrl}</strong>
+      </div>
+
+      <div style={{ marginTop: 32 }}>
+        <h2 style={{ fontSize: 20, marginBottom: 8 }}>Danh sách người đã đăng ký</h2>
+        {admissionsLoading ? (
+          <p>Đang tải...</p>
+        ) : admissionsError ? (
+          <p style={{ color: 'red' }}>{admissionsError}</p>
+        ) : admissions.length === 0 ? (
+          <p>Chưa có ai đăng ký.</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
+            <thead>
+              <tr style={{ background: '#f3f4f6' }}>
+                <th style={{ padding: 8, border: '1px solid #e5e7eb' }}>Họ tên</th>
+                <th style={{ padding: 8, border: '1px solid #e5e7eb' }}>Email</th>
+                <th style={{ padding: 8, border: '1px solid #e5e7eb' }}>Khóa học</th>
+                <th style={{ padding: 8, border: '1px solid #e5e7eb' }}>Trạng thái</th>
+                <th style={{ padding: 8, border: '1px solid #e5e7eb' }}>Ngày đăng ký</th>
+              </tr>
+            </thead>
+            <tbody>
+              {admissions.map((a) => (
+                <tr key={a.id}>
+                  <td style={{ padding: 8, border: '1px solid #e5e7eb' }}>{a.fullName}</td>
+                  <td style={{ padding: 8, border: '1px solid #e5e7eb' }}>{a.email}</td>
+                  <td style={{ padding: 8, border: '1px solid #e5e7eb' }}>{a.course}</td>
+                  <td style={{ padding: 8, border: '1px solid #e5e7eb' }}>{a.status}</td>
+                  <td style={{ padding: 8, border: '1px solid #e5e7eb' }}>{new Date(a.submittedAt).toLocaleString('vi-VN')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
