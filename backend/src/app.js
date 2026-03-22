@@ -1,9 +1,16 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const admissionRoutes = require('./routes/admissionRoutes');
 
-dotenv.config();
+// Tự động load .env.{NODE_ENV} nếu tồn tại, fallback về .env
+const nodeEnv = process.env.NODE_ENV;
+if (nodeEnv) {
+  dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}`) });
+}
+dotenv.config(); // fallback: load .env cho các biến còn thiếu
+
 
 const app = express();
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || '*';

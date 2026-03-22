@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev:db": "docker compose -f docker-compose.dev.yml up -d",
-    "dev:be": "cd backend && set NODE_ENV=development && node src/server.js",
+    "dev:be": "cd backend && node -r dotenv/config src/server.js dotenv_config_path=.env.dev",
     "dev:fe": "cd frontend && npm run dev",
     "build:up": "docker compose -f docker-compose.build.yml up --build",
     "build:down": "docker compose -f docker-compose.build.yml down"
