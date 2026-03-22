@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mysql-test:
+    image: mysql:8.0
+    container_name: lms-mysql-test
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: lms_db_test
+      MYSQL_USER: lms_user
+      MYSQL_PASSWORD: lms_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_test_data:/var/lib/mysql
+    networks:
+      - lms-network-test
+
+  backend-test:
+    build:
+      context: ./backend
+    container_name: lms-backend-test
+    ports:
+      - "5001:5000"
+    env_file:
+      - ./backend/.env.test
+    depends_on:
+      - mysql-test
+    networks:
+      - lms-network-test
+
+  frontend-test:
+    build:
+      context: ./frontend
+    container_name: lms-frontend-test
+    ports:
+      - "5174:5173"
+    env_file:
+      - ./frontend/.env.test
+    networks:
+      - lms-network-test
+
+volumes:
+  mysql_test_data:
+
+networks:
+  lms-network-test:
+    driver: bridge
