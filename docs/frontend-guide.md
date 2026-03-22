@@ -1,6 +1,6 @@
 # Frontend Guide — LMS Admission Web
 
-> Tài liệu dành cho beginner developer.  
+> Tài liệu dành cho developer.  
 > Giải thích **từng thư viện, từng file, từng lệnh** trong dự án frontend.
 
 ---
