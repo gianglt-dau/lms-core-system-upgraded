@@ -5,7 +5,7 @@
 |--------|---------|
 | **Tài liệu** | Software Requirements Specification |
 | **Phiên bản** | 2.0 |
-| **Trạng thái** | Implemented |
+| **Trạng thái** | Draft |
 | **Chuẩn tham chiếu** | IEEE 830 |
 | **Ngày** | 2026-03-22 |
 
@@ -29,7 +29,7 @@
 
 ### 1.1 Mục đích tài liệu
 
-Tài liệu này mô tả đầy đủ các yêu cầu phần mềm của hệ thống LMS Admission Module phiên bản 2.0, bao gồm yêu cầu chức năng, phi chức năng, đặc tả API, cấu trúc cơ sở dữ liệu, và các ràng buộc kỹ thuật. Tài liệu được viết ngược từ codebase đã triển khai.
+Tài liệu này mô tả đầy đủ các yêu cầu phần mềm của hệ thống LMS Admission Module phiên bản 2.0, bao gồm yêu cầu chức năng, phi chức năng, đặc tả API, cấu trúc cơ sở dữ liệu, và các ràng buộc kỹ thuật. Đây là tài liệu yêu cầu định hướng cho quá trình thiết kế và phát triển.
 
 ### 1.2 Phạm vi hệ thống
 
@@ -87,27 +87,27 @@ Hệ thống gồm hai thành phần:
 HTTP Request
      │
      ▼
-admissionRoutes.js   ← Định tuyến URL → Controller function
+[ Routes ]     ← Định tuyến URL → Handler tương ứng
      │
      ▼
-admissionController.js  ← Nhận req/res, gọi Service, trả JSON
+[ Controller ] ← Nhận request, gọi Service, trả JSON response
      │
      ▼
-admissionService.js  ← Validation, business rules, chuẩn hóa data
+[ Service ]    ← Validation, business rules, chuẩn hóa dữ liệu
      │
      ▼
-admissionModel.js    ← Câu lệnh SQL: INSERT, SELECT
+[ Model ]      ← Truy vấn cơ sở dữ liệu: đọc / ghi
      │
      ▼
-db.js (mysql2 pool)  ← Kết nối MySQL
+[ Database ]   ← Lưu trữ dữ liệu bền vững
 ```
 
 ### 2.3 Luồng dữ liệu
 
 ```
-[Browser] → JSON body → [Express middleware parse] → [Controller]
-→ [Service validate] → [Model INSERT] → [MySQL]
-← [Model SELECT by ID] ← [MySQL]
+[Browser] → JSON body → [Middleware parse] → [Controller]
+→ [Service validate + xử lý] → [Model ghi vào DB] → [Database]
+← [Model đọc lại bản ghi vừa tạo] ← [Database]
 ← [Controller trả JSON 201] ← [Browser hiển thị]
 ```
 
@@ -118,8 +118,7 @@ db.js (mysql2 pool)  ← Kết nối MySQL
 ### FR-01: Tiếp nhận đăng ký tuyển sinh
 
 **ID:** FR-01  
-**Ưu tiên:** Must Have  
-**Nguồn:** `admissionController.createAdmission`, `admissionService.submitAdmission`
+**Ưu tiên:** Must Have
 
 #### FR-01.1 — Input
 Hệ thống phải nhận HTTP POST request tới `/api/admissions` với body JSON:
@@ -143,8 +142,8 @@ Hệ thống phải thực hiện validate **trước khi** ghi vào database:
 
 #### FR-01.3 — Chuẩn hóa dữ liệu
 Trước khi lưu, hệ thống phải:
-- `fullName`: áp dụng `.trim()` — loại bỏ khoảng trắng đầu/cuối
-- `email`: áp dụng `.trim().toLowerCase()` — chuẩn hóa về chữ thường
+- `fullName`: loại bỏ khoảng trắng đầu và cuối
+- `email`: chuẩn hóa về chữ thường và loại bỏ khoảng trắng thừa
 
 #### FR-01.4 — Lưu trữ
 Hệ thống phải ghi vào bảng `admissions` với:
@@ -175,8 +174,7 @@ HTTP 201 Created
 ### FR-02: Lấy danh sách đăng ký
 
 **ID:** FR-02  
-**Ưu tiên:** Must Have  
-**Nguồn:** `admissionController.getAdmissions`, `admissionModel.getAllAdmissions`
+**Ưu tiên:** Must Have
 
 #### FR-02.1 — Input
 HTTP GET request tới `/api/admissions`. Không yêu cầu body hay query params.
@@ -215,8 +213,7 @@ Danh sách phải được sắp xếp theo `id DESC` — bản ghi mới nhất
 ### FR-03: Health Check
 
 **ID:** FR-03  
-**Ưu tiên:** Must Have  
-**Nguồn:** `app.js` route `/api/health`
+**Ưu tiên:** Must Have
 
 #### FR-03.1
 HTTP GET `/api/health` phải trả về:
@@ -232,19 +229,17 @@ Endpoint này phải phản hồi **ngay lập tức** mà không truy vấn dat
 ### FR-04: Khởi tạo database tự động
 
 **ID:** FR-04  
-**Ưu tiên:** Must Have  
-**Nguồn:** `config/db.js → initializeDatabase()`
+**Ưu tiên:** Must Have
 
 #### FR-04.1
-Khi server khởi động, hệ thống phải tự động tạo bảng `admissions` nếu chưa tồn tại bằng câu lệnh `CREATE TABLE IF NOT EXISTS`. Server chỉ bắt đầu nhận request sau khi bước này hoàn tất thành công.
+Khi server khởi động, hệ thống phải tự động tạo schema cần thiết trong database nếu chưa tồn tại. Thao tác này phải được thực hiện theo kiểu **idempotent** — an toàn khi restart nhiều lần. Server chỉ bắt đầu nhận request sau khi bước khởi tạo hoàn tất thành công.
 
 ---
 
 ### FR-05: Xử lý lỗi toàn cục
 
 **ID:** FR-05  
-**Ưu tiên:** Must Have  
-**Nguồn:** `app.js` error handler middleware
+**Ưu tiên:** Must Have
 
 | Tình huống | HTTP Status | Response body |
 |-----------|------------|---------------|
@@ -257,8 +252,7 @@ Khi server khởi động, hệ thống phải tự động tạo bảng `admiss
 ### FR-06: Giao diện Form đăng ký (Frontend)
 
 **ID:** FR-06  
-**Ưu tiên:** Must Have  
-**Nguồn:** `frontend/src/App.jsx`
+**Ưu tiên:** Must Have
 
 #### FR-06.1 — Các trường input
 - `fullName`: text input, placeholder "Họ và tên", `required`
@@ -267,8 +261,8 @@ Khi server khởi động, hệ thống phải tự động tạo bảng `admiss
 
 #### FR-06.2 — Trạng thái loading
 Khi đang gửi request, nút submit phải:
-- Hiển thị text "Đang gửi..."
-- `disabled = true` — không cho nhấn lại
+- Hiển thị text "HÁĐang gửi..."
+- Được vô hiệu hóa — không cho nhấn lại cho đến khi có kết quả
 
 #### FR-06.3 — Thông báo kết quả
 - Thành công: hiển thị `"✅ " + message` từ API
@@ -283,14 +277,13 @@ Sau khi gửi thành công, tất cả các trường input phải được rese
 ### FR-07: Giao diện danh sách đăng ký (Frontend)
 
 **ID:** FR-07  
-**Ưu tiên:** Must Have  
-**Nguồn:** `frontend/src/App.jsx`
+**Ưu tiên:** Must Have
 
 #### FR-07.1 — Tải tự động
-Danh sách phải được gọi API và load tự động khi component mount lần đầu (`useEffect`).
+Danh sách phải được gọi API và load tự động khi trang web được mở lần đầu.
 
 #### FR-07.2 — Cập nhật sau submit
-Sau khi gửi form thành công, `fetchAdmissions()` phải được gọi lại để cập nhật danh sách.
+Sau khi gửi form thành công, danh sách phải được làm mới tự động để hiển thị hồ sơ vừa tạo.
 
 #### FR-07.3 — Trạng thái loading/error
 - Trong khi đang tải: hiển thị indicator loading
@@ -310,36 +303,36 @@ Sau khi gửi form thành công, `fetchAdmissions()` phải được gọi lại
 
 ### NFR-02: Bảo mật
 
-| Yêu cầu | Triển khai |
-|---------|-----------|
-| Chống SQL Injection | Prepared statements với `pool.execute(sql, values)` |
-| Chống XSS | CSP header trong `index.html` |
-| Cross-Origin control | CORS middleware, cấu hình qua `CLIENT_ORIGIN` env var |
-| Không hardcode credentials | Tất cả secrets trong `.env` files, không commit lên git |
+| Yêu cầu | Phương pháp được đề xuất |
+|---------|--------|
+| Chống SQL Injection | Parameterized queries — tham số người dùng được truyền riêng, không nhúc vào câu SQL |
+| Chống XSS | CSP header khai báo trong HTML, giới hạn nguồn tài nguyên được phép tải |
+| Kiểm soát Cross-Origin | CORS cấu hình qua environment variable |
+| Không hardcode credentials | Tất cả secrets lưu trong file cấu hình môi trường, không commit lên repository |
 
 ### NFR-03: Khả dụng (Availability)
 
-| Yêu cầu | Triển khai |
-|---------|-----------|
-| DB phải healthy trước khi BE nhận request | `initializeDatabase()` trong `bootstrap()` |
-| Trong Docker: service ordering | `depends_on: condition: service_healthy` |
-| Health endpoint cho monitoring | `GET /api/health` |
+| Yêu cầu | Phương pháp được đề xuất |
+|---------|--------|
+| Database phải sẵn sàng trước khi server nhận request | Khởi tạo kết nối DB và schema tại startup, dừng server nếu thất bại |
+| Trong Docker: service ordering | Sử dụng healthcheck để đảm bảo service phụ thuộc chưa khởi động cho đến khi dependency healthy |
+| Health endpoint cho monitoring | `GET /api/health` trả lời ngay lập tức không truy vấn database |
 
 ### NFR-04: Khả năng bảo trì (Maintainability)
 
-| Yêu cầu | Triển khai |
-|---------|-----------|
-| Tách biệt concerns | Layered Architecture (Route/Controller/Service/Model) |
-| Cấu hình qua environment | Không hardcode port, host, credentials |
-| Hỗ trợ nhiều môi trường | `.env.dev`, `.env.build` auto-selected theo `NODE_ENV` |
+| Yêu cầu | Phương pháp được đề xuất |
+|---------|--------|
+| Tách biệt concerns | Layered Architecture: mỗi tầng chỉ đảm nhiệm một trách nhiệm (Route / Controller / Service / Model) |
+| Cấu hình qua environment | Không hardcode port, host, credentials trong code |
+| Hỗ trợ nhiều môi trường | File cấu hình riêng biệt cho từng môi trường, tự động chọn dựa trên biến môi trường |
 
 ### NFR-05: Tính di động (Portability)
 
-| Yêu cầu | Triển khai |
-|---------|-----------|
-| Containerization | Dockerfile cho cả BE và FE |
-| Multi-environment Docker | `docker-compose.dev.yml`, `docker-compose.build.yml` |
-| OS | Windows (PowerShell scripts), Linux (Docker) |
+| Yêu cầu | Phương pháp được đề xuất |
+|---------|--------|
+| Containerization | Cả backend và frontend được đóng gói thành Docker image |
+| Multi-environment Docker | Hai bộ cấu hình Docker Compose riêng biệt: môi trường Dev và Build |
+| OS | Hỗ trợ Windows (script khởi động) và Linux (container) |
 
 ---
 
@@ -534,50 +527,46 @@ CREATE TABLE IF NOT EXISTS admissions (
 
 ## 8. Ràng buộc thiết kế
 
-### 8.1 Thứ tự khởi tạo `dotenv`
+### 8.1 Thứ tự nạp cấu hình môi trường
 
-`dotenv.config()` phải được gọi **đầu tiên** trong `app.js`, trước mọi `require()` của code ứng dụng. Vi phạm điều này dẫn đến `DB_HOST` fallback về giá trị hardcode `'mysql'`.
+Cấu hình môi trường (biến `DB_HOST`, `PORT`, ...) phải được nạp vào bộ nhớ tiến trình **trước khi bất kỳ module ứng dụng nào khởi tạo**. Vi phạm ràng buộc này sẽ khiến các module được khởi tạo với giá trị mặc định cứng trong code, dấn đến hành vi không đúng tại runtime.
 
-```javascript
-// ✅ ĐÚNG
-const dotenv = require('dotenv');
-dotenv.config(...);           // Load env TRƯỚC
-const admissionRoutes = require('./routes/admissionRoutes'); // db.js chạy SAU
+### 8.2 Parameterized queries bắt buộc
 
-// ❌ SAI
-const admissionRoutes = require('./routes/admissionRoutes'); // db.js chạy TRƯỚC
-dotenv.config(...);           // Quá muộn!
-```
+Mọi câu lệnh SQL có tham số đến từ người dùng **phải** sử dụng parameterized queries (tham số được truyền riêng, không ghép trực tiếp vào chuỗi SQL). Đây là yêu cầu bảo mật không thể bỏ qua.
 
-### 8.2 Prepared Statements bắt buộc
+### 8.3 Port mapping trong Docker
 
-Tất cả câu lệnh SQL có tham số người dùng **phải** dùng `pool.execute(sql, values)` với placeholder `?`. Không được dùng string concatenation hay template literal để ghép giá trị vào SQL.
+Cuú pháp Docker port mapping là `HOST_PORT:CONTAINER_PORT`. Cổng bên phải (CONTAINER_PORT) phải khớp chính xác với port service đang lắng nghe bên trong container. Sai port dẫn đến service không truy cập được dù container đang chạy.
 
-### 8.3 Port mapping Docker
+### 8.4 Build-time variables cho Frontend
 
-Cú pháp Docker port mapping `HOST:CONTAINER` — cổng bên phải phải khớp chính xác với port service đang lắng nghe bên trong container. Sai port dẫn đến service không truy cập được dù container đang chạy.
+Các biến môi trường có tiền tố `VITE_*` được nhúc cứng (inline) vào JavaScript bundle **tại thời điểm build**, không phải runtime. Do đó, những biến này phải được truyền vào quá trình build Docker thông qua `build arguments`, không phải qua `env_file` ở runtime.
 
-### 8.4 Content Security Policy
+### 8.5 Content Security Policy
 
-Frontend phải khai báo CSP header cho phép `connect-src` đến backend port đang dùng. Khi đổi môi trường (port 5000 ↔ 5001), CSP phải cập nhật tương ứng hoặc dùng `localhost:*` cho môi trường dev/build.
+Frontend phải khai báo CSP header cho phép `connect-src` đến backend port đang dùng. Khi đổi môi trường (port thay đổi), CSP phải cập nhật tương ứng. Trong môi trường dev/build nội bộ có thể dùng wildcard port, trong production phải chỉ định rõ domain.
 
 ---
 
 ## 9. Ma trận truy vết yêu cầu
 
-| Requirement ID | Mô tả | File triển khai | Endpoint / Function |
-|---------------|-------|----------------|---------------------|
-| FR-01 | Tiếp nhận đăng ký | `admissionController.js`, `admissionService.js`, `admissionModel.js` | `POST /api/admissions` |
-| FR-01.2 | Validation | `admissionService.js → validateAdmissionPayload()` | — |
-| FR-01.3 | Chuẩn hóa data | `admissionService.js → submitAdmission()` | — |
-| FR-01.4 | Lưu vào DB | `admissionModel.js → createAdmission()` | — |
-| FR-02 | Lấy danh sách | `admissionController.js`, `admissionModel.js` | `GET /api/admissions` |
-| FR-03 | Health check | `app.js` | `GET /api/health` |
-| FR-04 | Tạo bảng DB | `config/db.js → initializeDatabase()` | — |
-| FR-05 | Xử lý lỗi toàn cục | `app.js` error middleware | — |
-| FR-06 | Form UI | `frontend/src/App.jsx` | — |
-| FR-07 | Danh sách UI | `frontend/src/App.jsx` | — |
-| NFR-02 | SQL Injection | `admissionModel.js` — `pool.execute()` | — |
+| Requirement ID | Mô tả | Endpoint / Component |
+|---------------|-------|---------------------|
+| FR-01 | Tiếp nhận đăng ký | `POST /api/admissions` |
+| FR-01.2 | Validation dữ liệu đầu vào | Service layer |
+| FR-01.3 | Chuẩn hóa dữ liệu | Service layer |
+| FR-01.4 | Lưu vào database | Model layer |
+| FR-02 | Lấy danh sách đăng ký | `GET /api/admissions` |
+| FR-03 | Health check | `GET /api/health` |
+| FR-04 | Tạo schema DB tự động | Startup initialization |
+| FR-05 | Xử lý lỗi toàn cục | Error handling middleware |
+| FR-06 | Form UI | Frontend component |
+| FR-07 | Danh sách UI | Frontend component |
+| NFR-02 | SQL Injection prevention | Model layer — parameterized queries |
+| NFR-02 | XSS / CSP | Frontend — CSP header |
+| NFR-03 | Service ordering | Docker Compose — healthcheck |
+| NFR-04 | Multi-env config | Startup — environment-based config selection |
 | NFR-02 | XSS / CSP | `frontend/index.html` | — |
 | NFR-03 | Service ordering | `docker-compose.build.yml` — healthcheck | — |
 | NFR-04 | Multi-env config | `app.js` — `dotenv.config()` | — |

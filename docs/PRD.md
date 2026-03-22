@@ -5,7 +5,7 @@
 |--------|---------|
 | **Sản phẩm** | LMS Core System — Module Tuyển Sinh |
 | **Phiên bản** | 2.0 |
-| **Trạng thái** | Released |
+| **Trạng thái** | Draft |
 | **Ngày** | 2026-03-22 |
 | **Tác giả** | Engineering Team |
 
@@ -112,9 +112,9 @@ Lỗi validation trả về HTTP 400 kèm thông báo cụ thể.
 
 ### F-04: API Health Check
 
-**Mô tả:** Endpoint cho phép kiểm tra nhanh server đang hoạt động.
+**Mô tả:** Endpoint cho phép kiểm tra nhanh server đang hoạt động mà không cần truy vấn database.
 
-- `GET /api/health` → `200 OK { status: "API is running smoothly" }`
+- `GET /api/health` → HTTP 200 với thông tin trạng thái hệ thống
 - Dùng cho monitoring, Docker healthcheck, CI/CD pipeline
 
 ---
