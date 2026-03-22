@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  mysql-build:
+    image: mysql:8.0
+    container_name: lms-mysql-build
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: lms_db_build
+      MYSQL_USER: lms_user
+      MYSQL_PASSWORD: lms_password
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - mysql_build_data:/var/lib/mysql
+    networks:
+      - lms-network-build
+
+  backend-build:
+    build:
+      context: ./backend
+    container_name: lms-backend-build
+    ports:
+      - "5001:5001"
+    env_file:
+      - ./backend/.env.build
+    depends_on:
+      mysql-build:
+        condition: service_healthy
+    networks:
+      - lms-network-build
+
+  frontend-build:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5001
+        VITE_PORT: "5174"
+    container_name: lms-frontend-build
+    ports:
+      - "5174:5174"
+    depends_on:
+      - backend-build
+    networks:
+      - lms-network-build
+
+volumes:
+  mysql_build_data:
+
+networks:
+  lms-network-build:
+    driver: bridge
